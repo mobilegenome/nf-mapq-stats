@@ -6,15 +6,11 @@ params.window_size = 500
 sampleNameSeparator = "."
 
 
-includeConfig 'profile.config'
-
-
 // get channel of BAM files
 // in the format of tuples consisting of (filename, bampath)
 bam_files_ch = Channel.fromPath(params.input_bam, checkIfExists: true).map {
     tuple( it.name.split("\\.")[0], it)
     }
-.subscribe onNext: { println it }, onComplete: { println 'Done' }
 
 bam_files_ch.view()
 
@@ -30,6 +26,9 @@ log.info """\
     .stripIndent(true)
 
 process createGenomeSizeFile {
+    conda 'samtools'
+
+
     input:
     path genome_fasta
     
@@ -45,6 +44,8 @@ process createGenomeSizeFile {
 }
 
 process createGenomicWindows {
+    conda 'bedtools'
+
     publishDir params.outdir, mode: 'copy'
 
     input:
@@ -64,6 +65,8 @@ process createGenomicWindows {
 
 
 process getMAPQinWindows {
+    conda 'bedtools gzip'
+
     tag "get MAPQs for ${bamfile} (Sample: ${sample_id})"
     publishDir params.outdir, mode: 'copy'
 
@@ -76,7 +79,7 @@ process getMAPQinWindows {
     
     script: 
     """
-    bedtools intersect -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz"
+    bedtools intersect -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz
     """
 }
 
