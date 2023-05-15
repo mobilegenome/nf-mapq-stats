@@ -52,7 +52,8 @@ process createGenomicWindows {
     memory = 8.GB
     cpus = 2
     time = 8.h
-    conda 'bioconda::bedtools=2.25.0'
+    conda 'environment.yml'
+
 
     publishDir params.outdir, mode: 'copy'
 
@@ -77,7 +78,8 @@ process getMAPQinWindows {
     cpus = 2
     time = 8.h
     
-    conda 'bioconda::bedtools=2.25.0'
+    conda 'environment.yml'
+
 
     tag "get MAPQs for ${bamfile} (Sample: ${sample_id})"
     publishDir params.outdir, mode: 'copy'
