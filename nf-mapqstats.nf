@@ -89,7 +89,7 @@ process createGenomicWindows {
 
 process getMAPQinWindows {
     // set system requirements
-    memory { 32.GB * task.attempt }
+    memory { 2.GB * task.attempt }
     cpus = 2
     time = 8.h
     errorStrategy { task.exitStatus == 130 ? 'retry' : 'terminate' }
@@ -111,6 +111,7 @@ process getMAPQinWindows {
     
     script: 
     """
+    set -euf -o pipefail
     bedtools intersect --sorted -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz
     """
 }
