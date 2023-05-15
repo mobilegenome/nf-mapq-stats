@@ -88,7 +88,7 @@ process createGenomicWindows {
 
 
 process getMAPQinWindows {
-    memory = 32.GB
+    memory = 128.GB
     cpus = 2
     time = 8.h
     
