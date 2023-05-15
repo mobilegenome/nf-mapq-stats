@@ -26,6 +26,10 @@ log.info """\
     .stripIndent(true)
 
 process createGenomeSizeFile {
+    memory = 2.GB
+    cpus = 2
+    time = 1.h
+
     conda 'samtools'
 
 
@@ -44,6 +48,9 @@ process createGenomeSizeFile {
 }
 
 process createGenomicWindows {
+    memory = 8.GB
+    cpus = 2
+    time = 8.h
     conda 'bedtools'
 
     publishDir params.outdir, mode: 'copy'
@@ -65,6 +72,10 @@ process createGenomicWindows {
 
 
 process getMAPQinWindows {
+    memory = 8.GB
+    cpus = 2
+    time = 8.h
+    
     conda 'bedtools gzip'
 
     tag "get MAPQs for ${bamfile} (Sample: ${sample_id})"
