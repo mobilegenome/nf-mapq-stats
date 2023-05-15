@@ -30,7 +30,7 @@ process createGenomeSizeFile {
     cpus = 2
     time = 1.h
 
-    conda 'environment.yml'
+    conda (params.enable_conda ? "bioconda::samtools=1.17" : null)
 
 
     input:
@@ -52,7 +52,7 @@ process createGenomicWindows {
     memory = 8.GB
     cpus = 2
     time = 8.h
-    conda 'environment.yml'
+    conda (params.enable_conda ? "bioconda::samtools=1.17 bioconda::bedtools=2.25" : null)
 
 
     publishDir params.outdir, mode: 'copy'
@@ -68,6 +68,20 @@ process createGenomicWindows {
     script:
     """
     bedtools makewindows -g ${genomesize_file} -w ${window_size} > 'genomic_windows.${window_size}.bed'
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
+    END_VERSIONS
+    """
+
+    stub:
+    """
+    touch ${fasta}.fai
+    cat <<-END_VERSIONS > versions.yml
+
+    "${task.process}":
+        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
+    END_VERSIONS
     """
 
 }
@@ -78,7 +92,7 @@ process getMAPQinWindows {
     cpus = 2
     time = 8.h
     
-    conda 'environment.yml'
+    conda (params.enable_conda ? "bioconda::bedtools=2.25" : null)
 
 
     tag "get MAPQs for ${bamfile} (Sample: ${sample_id})"
