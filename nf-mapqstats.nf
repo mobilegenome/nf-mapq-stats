@@ -30,7 +30,7 @@ process createGenomeSizeFile {
     cpus = 2
     time = 1.h
 
-    conda 'samtools'
+    conda 'bioconda::samtools'
 
 
     input:
@@ -51,7 +51,7 @@ process createGenomicWindows {
     memory = 8.GB
     cpus = 2
     time = 8.h
-    conda 'bedtools'
+    conda 'bioconda::bedtools'
 
     publishDir params.outdir, mode: 'copy'
 
@@ -76,7 +76,7 @@ process getMAPQinWindows {
     cpus = 2
     time = 8.h
     
-    conda 'bedtools gzip'
+    conda 'bioconda::bedtools'
 
     tag "get MAPQs for ${bamfile} (Sample: ${sample_id})"
     publishDir params.outdir, mode: 'copy'
