@@ -88,10 +88,14 @@ process createGenomicWindows {
 
 
 process getMAPQinWindows {
-    memory = 128.GB
+    // set system requirements
+    memory { 32.GB * task.attempt }
     cpus = 2
     time = 8.h
-    
+    errorStrategy { task.exitStatus == 130 ? 'retry' : 'terminate' }
+    maxRetries = 8
+
+    // define dependencies for conda
     conda (params.enable_conda ? "bioconda::bedtools=2.25" : null)
 
 
@@ -107,7 +111,7 @@ process getMAPQinWindows {
     
     script: 
     """
-    bedtools intersect -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz
+    bedtools intersect --sorted -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz
     """
 }
 
