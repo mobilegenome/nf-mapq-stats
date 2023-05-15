@@ -30,7 +30,7 @@ process createGenomeSizeFile {
     cpus = 2
     time = 1.h
 
-    conda 'bioconda::samtools=1.17'
+    conda 'environment.yml'
 
 
     input:
