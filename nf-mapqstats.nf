@@ -112,7 +112,7 @@ process getMAPQinWindows {
     script: 
     """
     set -euf -o pipefail
-    bedtools intersect --sorted -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz
+    bedtools intersect -sorted -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz
     """
 }
 
