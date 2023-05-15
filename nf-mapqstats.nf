@@ -42,6 +42,7 @@ process createGenomeSizeFile {
 
     script:
     """
+    samtools version && 
     samtools faidx --fai-idx /dev/stdout ${genome_fasta} | cut -f1-2 > genomesize_file
     """
 
