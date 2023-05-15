@@ -1,18 +1,23 @@
 params.input_bam = "$projectDir/test/data/sample{A,B}.bam"
 params.genome_file = "$projectDir/test/data/genome.fa"
-params.output_bed_files = "$projectDir/test/data/{sample}_mapqstats.bed"
 params.outdir = "$projectDir/test/results/"
 params.window_size = 500
 
 sampleNameSeparator = "."
 
+
+includeConfig 'profile.config'
+
+
+// get channel of BAM files
+// in the format of tuples consisting of (filename, bampath)
 bam_files_ch = Channel.fromPath(params.input_bam, checkIfExists: true).map {
     tuple( it.name.split("\\.")[0], it)
     }
 .subscribe onNext: { println it }, onComplete: { println 'Done' }
 
-
 bam_files_ch.view()
+
 
 log.info """\
     MAPQ STATISTICS
@@ -59,28 +64,26 @@ process createGenomicWindows {
 
 
 process getMAPQinWindows {
+    tag "get MAPQs for ${bamfile} (Sample: ${sample_id})"
     publishDir params.outdir, mode: 'copy'
 
     input: 
-    tuple val(sample_id), path(bamfile)
     path window_file
+    tuple val(sample_id), path(bamfile)
 
     output:
     path "mapq_${sample_id}.bed.gz"
     
     script: 
     """
-    bedtools intersect -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | \
-    bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz"
+    bedtools intersect -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz"
     """
 }
 
 workflow {
     genomesize_ch = createGenomeSizeFile(params.genome_file)
     genomic_windows_ch = createGenomicWindows(genomesize_ch, params.window_size)
-    bam_files_ch.view()
-    mapq_in_windows_ch = getMAPQinWindows(bam_files_ch, genomic_windows_ch)
-    genomic_windows_ch.view() 
+    getMAPQinWindows(genomic_windows_ch, bam_files_ch)
 }
 
 
