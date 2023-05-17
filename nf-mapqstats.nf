@@ -1,24 +1,38 @@
 params.input_bam = "$projectDir/test/data/sample{A,B}.bam"
+params.input_vcf = "$projectDir/test/data/*.vcf.gz"
 params.genome_file = "$projectDir/test/data/genome.fa"
 params.outdir = "$projectDir/test/results/"
 params.window_size = 500
+params.sv_qual_min_threshold = 30
+params.sv_len_max_threshold = 20000
 
 sampleNameSeparator = "."
 
 
 // get channel of BAM files
 // in the format of tuples consisting of (filename, bampath)
-bam_files_ch = Channel.fromPath(params.input_bam, checkIfExists: true).map {
+def bam_files_ch = Channel.fromPath(params.input_bam, checkIfExists: true)
+    .map {
     tuple( it.name.split("\\.")[0], it)
     }
 
 bam_files_ch.view()
+
+// get channel of VCF files
+// in the format of tuples consisting of (filename, bampath)
+def vcf_files_ch = Channel.fromPath(params.input_vcf, checkIfExists: true)
+    .map {
+    tuple( it.name.split("\\.")[0], it)
+    }
+
+vcf_files_ch.view()
 
 
 log.info """\
     MAPQ STATISTICS
     ===============
     bams: ${params.input_bam}
+    vcfs: ${params.input_vcf}
     genome_fasta: ${params.genome_file}
     outdir: ${params.outdir}
     window_size: ${params.window_size}
@@ -76,7 +90,7 @@ process createGenomicWindows {
 
     stub:
     """
-    touch ${fasta}.fai
+    touch 'genomic_windows.${window_size}.bed'
     cat <<-END_VERSIONS > versions.yml
 
     "${task.process}":
@@ -86,40 +100,98 @@ process createGenomicWindows {
 
 }
 
-
-process getMAPQinWindows {
-    // set system requirements
-    memory { 2.GB * task.attempt }
-    cpus = 2
-    time = 8.h
-    errorStrategy { task.exitStatus == 130 ? 'retry' : 'terminate' }
-    maxRetries = 8
-
+process convertVCFtoBED {
     // define dependencies for conda
-    conda (params.enable_conda ? "bioconda::bedtools=2.25" : null)
-
-
-    tag "get MAPQs for ${bamfile} (Sample: ${sample_id})"
+    conda (params.enable_conda ? "bioconda::cyvcf" : null)
+    
+    tag "convert VCF to BED for  ${vcf_file}"
     publishDir params.outdir, mode: 'copy'
 
+
     input: 
-    path window_file
-    tuple val(sample_id), path(bamfile)
+    tuple val(sample_id), path(vcf_file)
+    val qual_min_threshold
+    val len_max_threshold
 
     output:
-    path "mapq_${sample_id}.bed.gz"
-    
-    script: 
+    tuple val(sample_id), path("sv_${sample_id}.bed")
+
+    script:
     """
-    set -euf -o pipefail
-    bedtools intersect -sorted -a ${window_file} -wa -wb -bed -b ${bamfile} -wa | bedtools merge -d -1 -c 8 -o collapse,count | gzip -c > mapq_${sample_id}.bed.gz
+    #!/usr/bin/env python
+    from cyvcf2 import VCF
+
+    output_fh = open("sv_${sample_id}.bed", "w")
+
+    for variant in VCF("${vcf_file}"): # or VCF('some.bcf')
+        if (variant.INFO.get("SVTYPE") == "DEL") and \
+            (variant.QUAL >= ${qual_min_threshold}):
+
+            chrom = variant.CHROM
+            start = variant.POS + variant.INFO.get("CIPOS")[1]  # get position from inner confidence interval
+            qual = round(variant.QUAL,3)
+            end = variant.INFO.get("END") - variant.INFO.get("CIEND")[0]  # get position from inner confidence interval
+            strand = "." # igore strand
+            id = variant.ID
+
+            # check end larger start
+            assert end > start
+            
+            if abs(variant.INFO.get("SVLEN")) >= ${len_max_threshold}:
+                continue
+
+            bed_line = [
+                chrom, 
+                start,
+                end,
+                id,
+                qual,
+                strand
+            ]
+            
+
+            print("\t".join([str(elem) for elem in bed_line]), file=output_fh)
+    
+    output_fh.close()
+    
     """
 }
 
+process SortBed {
+
+    conda (params.enable_conda ? "bioconda::bedtools=2.25" : null)
+
+    input:
+    tuple val(sample_id), path(bed_unsorted)
+
+    output:
+    path("sv_${sample_id}.sorted.bed")
+    //tuple val(sample_id), path("sv_${sample_id}.sorted.bed")
+
+
+	script:
+    """
+	bedtools sort -i ${bed_unsorted} | cut -f1-3 >  sv_${sample_id}.sorted.bed
+
+    """
+}
+
+include { getMAPQforRegions as getMAPQforGenotypes} from './modules/getMAPQforRegions.nf' addParams(output_prefix: 'svMAPQ')
+include { getMAPQforRegions as getMAPQforWindows} from './modules/getMAPQforRegions.nf'  addParams(output_prefix: 'windowMAPQ')
+
 workflow {
+
+
     genomesize_ch = createGenomeSizeFile(params.genome_file)
     genomic_windows_ch = createGenomicWindows(genomesize_ch, params.window_size)
-    getMAPQinWindows(genomic_windows_ch, bam_files_ch)
+    getMAPQforWindows(genomic_windows_ch, genomesize_ch, bam_files_ch)
+
+    svGenotypeBED_ch = convertVCFtoBED(vcf_files_ch, params.sv_qual_min_threshold, params.sv_len_max_threshold)
+    svGenotypeBED_ch.view()
+    svGenotypeSortedBed_ch = SortBed(svGenotypeBED_ch)
+    svGenotypeSortedBed_ch.view()
+    getMAPQforGenotypes(svGenotypeSortedBed_ch, genomesize_ch, bam_files_ch)
+
 }
 
 
