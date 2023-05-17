@@ -5,6 +5,7 @@ params.outdir = "$projectDir/test/results/"
 params.window_size = 500
 params.sv_qual_min_threshold = 30
 params.sv_len_max_threshold = 20000
+params.mapqinwindows = false
 
 sampleNameSeparator = "."
 
@@ -196,9 +197,11 @@ workflow {
 
 
     genomesize_ch = createGenomeSizeFile(params.genome_file)
-    genomic_windows_ch = createGenomicWindows(genomesize_ch, params.window_size)
-    getMAPQforWindows(genomic_windows_ch, genomesize_ch, bam_files_ch)
-
+    if ( params.mapqinwindows ) {
+        genomic_windows_ch = createGenomicWindows(genomesize_ch, params.window_size)
+        getMAPQforWindows(genomic_windows_ch, genomesize_ch, bam_files_ch)
+    }
+    
     svGenotypeBED_ch = convertVCFtoBED(vcf_files_ch, params.sv_qual_min_threshold, params.sv_len_max_threshold)
     svGenotypeBED_ch.view()
     svGenotypeSortedBed_ch = SortBed(svGenotypeBED_ch)
