@@ -109,7 +109,7 @@ process convertVCFtoBED {
     maxRetries = 8
 
     // define dependencies for conda
-    conda (params.enable_conda ? "bioconda::cyvcf" : null)
+    conda (params.enable_conda ? "bioconda::cyvcf python=3.11" : null)
     
     tag "convert VCF to BED for  ${vcf_file}"
     publishDir params.outdir, mode: 'copy'
@@ -171,7 +171,7 @@ process SortBed {
     time = 8.h
     errorStrategy { task.exitStatus == 130 ? 'retry' : 'terminate' }
     maxRetries = 8
-    
+
     conda (params.enable_conda ? "bioconda::bedtools=2.25" : null)
 
     input:
