@@ -110,7 +110,7 @@ process convertVCFtoBED {
     maxRetries = 8
 
     // define dependencies for conda
-    conda (params.enable_conda ? "bioconda::cyvcf python=3.11" : null)
+    conda (params.enable_conda ? "bioconda::cyvcf python=3.6.8" : null)
     
     tag "convert VCF to BED for  ${vcf_file}"
     publishDir params.outdir, mode: 'copy'
