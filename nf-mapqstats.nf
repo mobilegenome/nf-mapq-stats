@@ -101,6 +101,13 @@ process createGenomicWindows {
 }
 
 process convertVCFtoBED {
+    // set system requirements
+    memory { 2.GB * task.attempt }
+    cpus = 2
+    time = 8.h
+    errorStrategy { task.exitStatus == 130 ? 'retry' : 'terminate' }
+    maxRetries = 8
+
     // define dependencies for conda
     conda (params.enable_conda ? "bioconda::cyvcf" : null)
     
@@ -158,7 +165,13 @@ process convertVCFtoBED {
 }
 
 process SortBed {
-
+    // set system requirements
+    memory { 2.GB * task.attempt }
+    cpus = 2
+    time = 8.h
+    errorStrategy { task.exitStatus == 130 ? 'retry' : 'terminate' }
+    maxRetries = 8
+    
     conda (params.enable_conda ? "bioconda::bedtools=2.25" : null)
 
     input:
