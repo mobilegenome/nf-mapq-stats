@@ -177,6 +177,7 @@ process SortBed {
 
     input:
     tuple val(sample_id), path(bed_unsorted)
+    path genomesize_file
 
     output:
     path("sv_${sample_id}.sorted.bed")
@@ -185,7 +186,8 @@ process SortBed {
 
 	script:
     """
-	bedtools sort -i ${bed_unsorted} | cut -f1-3 >  sv_${sample_id}.sorted.bed
+    # use `-faidx genimesize_file to maintain correct chromosome/contig order 
+	bedtools sort -faidx ${genomesize_file} -i ${bed_unsorted} | cut -f1-3 >  sv_${sample_id}.sorted.bed
 
     """
 }
@@ -204,7 +206,7 @@ workflow {
     
     svGenotypeBED_ch = convertVCFtoBED(vcf_files_ch, params.sv_qual_min_threshold, params.sv_len_max_threshold)
     svGenotypeBED_ch.view()
-    svGenotypeSortedBed_ch = SortBed(svGenotypeBED_ch)
+    svGenotypeSortedBed_ch = SortBed(svGenotypeBED_ch, genomesize_ch)
     svGenotypeSortedBed_ch.view()
     getMAPQforGenotypes(svGenotypeSortedBed_ch, genomesize_ch, bam_files_ch)
 
